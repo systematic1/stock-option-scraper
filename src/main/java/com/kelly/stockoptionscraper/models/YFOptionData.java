@@ -3,10 +3,15 @@ package com.kelly.stockoptionscraper.models;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 
+import jakarta.persistence.*;
 import org.apache.commons.statistics.distribution.*;
+import org.springframework.data.annotation.Id;
 
+@Entity
+@Table(name="option_data")
 public class YFOptionData {
 
+    @Id
     private String contractName;
     private String expirationDate;
     private String optionType;
@@ -102,7 +107,6 @@ public class YFOptionData {
         //delta = isCall() ? normalCDFFn(d1) : normalCDFFn(d1) - 1f;
         delta = (float) (isCall() ? normalDist.cumulativeProbability(d1) : normalDist.cumulativeProbability(d1) - 1.0);
 
-        var timeToExpirationYears = getTimeToExpireYears() + 0.001f;
         var iv = impliedVolatilityPercent / 100;
         //gamma = (float) (normalPDFFn(d1) / (stockPrice * iv * Math.sqrt(timeToExpirationYears)));
         gamma = (float)(normalDist.density(d1) / (stockPrice * iv * Math.sqrt(timeToExpirationYears)));
@@ -120,7 +124,7 @@ public class YFOptionData {
         if (currentDate.isAfter(expireDate))
             days *= -1;
 
-        return (float)days / 365.25f;
+        return (float)(days / 365.25f) + 0.001f;
     }
 
     public Float getDelta() { return delta; }
@@ -130,7 +134,6 @@ public class YFOptionData {
     public Float getGex() { return gex; }
 
     private Float getBlackScholesValue(Float stockPrice, Float interestRate) {
-        var timeToExpirationYears = getTimeToExpireYears() + 0.001f;
         var iv = impliedVolatilityPercent / 100;
         var numer = Math.log(stockPrice / strikePrice) + ((interestRate + ((iv * iv) / 2)) * timeToExpirationYears);
         var denom = iv * Math.sqrt(timeToExpirationYears);

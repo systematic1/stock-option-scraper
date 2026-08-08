@@ -1,12 +1,18 @@
 package com.kelly.stockoptionscraper.models;
 
-import java.util.Date;
+import jakarta.persistence.*;
+
 import java.util.List;
 
+@Entity
+@Table(name = "option_gex")
 public class OptionGexData {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
     private String symbol;
-    private Date dateTime;
     private List<YFOptionData> callOptionChain;
     private List<YFOptionData> putOptionChain;
 
@@ -17,14 +23,16 @@ public class OptionGexData {
     private Float netCallGex;
     private Float netPutGex;
 
-    public OptionGexData(String symbol, Date dateTime, List<YFOptionData> callOptionChain, List<YFOptionData> putOptionChain) {
+    public OptionGexData(String symbol, List<YFOptionData> callOptionChain, List<YFOptionData> putOptionChain) {
         this.symbol = symbol;
-        this.dateTime = dateTime;
         this.callOptionChain = callOptionChain;
         this.putOptionChain = putOptionChain;
 
         computeGexData();
     }
+
+    public Integer getId() { return id; }
+    public String getSymbol() { return symbol; }
 
     public boolean isPositive() {
         return getNetTotalGex() >= 0f;

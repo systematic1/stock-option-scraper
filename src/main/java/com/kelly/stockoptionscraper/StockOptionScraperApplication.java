@@ -2,6 +2,8 @@ package com.kelly.stockoptionscraper;
 
 import com.kelly.stockoptionscraper.models.OptionGexData;
 import com.kelly.stockoptionscraper.models.YFOptionData;
+import com.kelly.stockoptionscraper.services.OptionDataService;
+import com.kelly.stockoptionscraper.services.OptionGexDataService;
 import com.kelly.stockoptionscraper.services.YFOptionChainParser;
 
 import java.io.IOException;
@@ -20,6 +22,7 @@ import java.util.Date;
 import java.util.concurrent.*;
 
 import org.jsoup.nodes.Element;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
@@ -33,22 +36,34 @@ import org.springframework.web.client.HttpServerErrorException;
 public class StockOptionScraperApplication {
 
     private static StockOptionScraperApplication appInstance;
-    private final Float interestRate = 1f;   // at 0 DTE, the e^(-rT) approaches one so just use constant here
     private final YFOptionChainParser optionDataParser;
-    private final String sourceUrl = "https://finance.yahoo.com/quote/{symbol}/options/?date={date}";  // should be in config file
+    private final OptionDataService optionDataService;
+    private final OptionGexDataService optionGexDataService;
     private static ArrayList<String> symbols;
     private ArrayList<YFOptionData> callOptionChain;
     private ArrayList<YFOptionData> putOptionChain;
     private Float stockPrice;
 
-    public static boolean overrideTimeFrame = true;    // set to true to allow running at any time
+    @Value("${app.scraper.url}")
+    public static String sourceUrl;
+
+    @Value("${app.override-time-frame}")
+    public static boolean overrideTimeFrame;    // true allows running at any time
+
+    @Value("${app.symbol.default}")
+    public static String defaultSymbol;
+
+    @Value("${app.run-interval.minutes}")
+    public static long runIntervalPeriod;
+
+    public static Float interestRate = 1f;   // at 0 DTE, the e^(-rT) approaches one so just use constant here
 
     static void main(String[] args) {
         symbols = new ArrayList<>();
         Collections.addAll(symbols, args);
 
         if (symbols.isEmpty())
-            symbols.add("^SPX");
+            symbols.add(defaultSymbol);
 
         var context = SpringApplication.run(StockOptionScraperApplication.class, args);
         appInstance = context.getBean(StockOptionScraperApplication.class);
@@ -58,16 +73,17 @@ public class StockOptionScraperApplication {
         Runnable task = () -> appInstance.checkTimeAndRun();
 
         long initialDelay = 0;
-        long period = 15;
-        scheduler.scheduleAtFixedRate(task, initialDelay, period, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(task, initialDelay, runIntervalPeriod, TimeUnit.MINUTES);
 
-        System.out.println(String.format("Scheduler set for %d minute intervals", period));
-        System.out.println("Press Ctrl+C to terminate");
+        System.out.println(String.format("Scheduler set for %d minute intervals", runIntervalPeriod));
         System.out.println();
     }
 
-    public StockOptionScraperApplication() {
+    public StockOptionScraperApplication(OptionDataService optionSvc, OptionGexDataService optionGexSvc) {
         optionDataParser = new YFOptionChainParser();
+        optionDataService = optionSvc;
+        optionGexDataService = optionGexSvc;
+
         callOptionChain = new ArrayList<>();
         putOptionChain = new ArrayList<>();
     }
@@ -112,7 +128,19 @@ public class StockOptionScraperApplication {
             }
 
             // Write to the database
-            // TODO
+            for (var callOption : callOptionChain) {
+                optionDataService.save(callOption);
+            }
+
+            for (var putOption : putOptionChain) {
+                optionDataService.save(putOption);
+            }
+
+            // Compute GEX overall data
+            var gex = new OptionGexData(symbol, callOptionChain, putOptionChain);
+
+            // Write to the database
+            optionGexDataService.save(gex);
 
             Float midPrice;
             var headerText = "Strike, Expiration, Ask, Bid, Mid || Last Trade, Last Price, Change, % Change || Volume, Open Int, IV % || Delta, Gamma, Gex";
@@ -151,12 +179,6 @@ public class StockOptionScraperApplication {
                         opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
                         opt.getDelta(), opt.getGamma(), opt.getGex()));
             }
-
-            // Compute GEX overall data
-            var gex = new OptionGexData(symbol, new Date(), callOptionChain, putOptionChain);
-
-            // Write to the database
-            // TODO
 
             System.out.println();
             System.out.println("================= GEX DATA =================");
