@@ -2,6 +2,7 @@ package com.kelly.stockoptionscraper.models;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -12,9 +13,9 @@ public class OptionGexData {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    private LocalDateTime dateTime;
     private String symbol;
-    private List<YFOptionData> callOptionChain;
-    private List<YFOptionData> putOptionChain;
+    private List<StrikeOptionData> strikeOptions;
 
     private Float callWallStrike;
     private Float putWallStrike;
@@ -22,32 +23,33 @@ public class OptionGexData {
     private Float putWallGex;
     private Float netCallGex;
     private Float netPutGex;
+    private Float absoluteGex;
 
-    public OptionGexData(String symbol, List<YFOptionData> callOptionChain, List<YFOptionData> putOptionChain) {
+    public OptionGexData(String symbol, LocalDateTime dateTime, List<StrikeOptionData> strikeOptions) {
         this.symbol = symbol;
-        this.callOptionChain = callOptionChain;
-        this.putOptionChain = putOptionChain;
+        this.dateTime = dateTime;
+        this.strikeOptions = strikeOptions;
 
         computeGexData();
     }
 
     public Integer getId() { return id; }
     public String getSymbol() { return symbol; }
+    public LocalDateTime getDateTime() { return dateTime; }
 
     public boolean isPositive() {
         return getNetTotalGex() >= 0f;
     }
-
     public boolean isCallWallHigherGex() {
         return callWallGex > putWallGex;
     }
-
     public Float getCallWallStrike() { return callWallStrike; }
     public Float getPutWallStrike() { return putWallStrike; }
     public Float getCallWallGex() { return callWallGex; }
     public Float getPutWallGex() { return putWallGex; }
     public Float getNetCallGex() { return netCallGex; }
     public Float getNetPutGex() { return netPutGex; }
+    public Float getAbsoluteGex() { return absoluteGex; }
     public Float getNetTotalGex() { return netCallGex - netPutGex; }
     public Float getAggregateTotalGex() { return netCallGex + netPutGex; }
 
@@ -58,23 +60,25 @@ public class OptionGexData {
         putWallStrike = 0f;
         netCallGex = 0f;
         netPutGex = 0f;
+        absoluteGex = 0f;
 
         // Discover the call wall and put wall and their gex values
-        for (var callOption : callOptionChain) {
-            netCallGex += callOption.getGex();
+        for (var optionData : strikeOptions) {
+            var callGex = optionData.getCallOption().getGex();
+            var putGex = optionData.getPutOption().getGex();
 
-            if (callOption.getGex() > callWallGex) {
-                callWallGex = callOption.getGex();
-                callWallStrike = callOption.getStrikePrice();
+            netCallGex += callGex;
+            netPutGex += putGex;
+            absoluteGex += optionData.getAbsoluteGex();
+
+            if (callGex > callWallGex) {
+                callWallGex = callGex;
+                callWallStrike = optionData.getStrikePrice();
             }
-        }
 
-        for (var putOption : putOptionChain) {
-            netCallGex += putOption.getGex();
-
-            if (putOption.getGex() < putWallGex) {
-                putWallGex = putOption.getGex();
-                putWallStrike = putOption.getStrikePrice();
+            if (putGex > putWallGex) {
+                putWallGex = putGex;
+                putWallStrike = optionData.getStrikePrice();
             }
         }
     }

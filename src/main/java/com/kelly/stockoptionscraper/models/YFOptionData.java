@@ -1,6 +1,7 @@
 package com.kelly.stockoptionscraper.models;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
 import jakarta.persistence.*;
@@ -13,6 +14,7 @@ public class YFOptionData {
 
     @Id
     private String contractName;
+    private LocalDateTime dateTime;
     private String expirationDate;
     private String optionType;
     private String lastTradeDate;
@@ -33,11 +35,12 @@ public class YFOptionData {
 
     public YFOptionData() { }
 
-    public YFOptionData(String contractName, String expirationDate, String optionType,
-                        String lastTradeDate, Float strikePrice, Float lastPrice,
+    public YFOptionData(LocalDateTime dateTime, String contractName, String expirationDate,
+                        String optionType, String lastTradeDate, Float strikePrice, Float lastPrice,
                         Float bidPrice, Float askPrice, Float change, Float percentChange,
                         Integer volume, Integer openInterest, Float impliedVolatilityPercent) {
         this.contractName = contractName;
+        this.dateTime = dateTime;
         this.expirationDate = expirationDate;
         this.optionType = optionType;
         this.lastTradeDate = lastTradeDate;
@@ -55,6 +58,8 @@ public class YFOptionData {
 
     public String getContractName() { return contractName; }
     public void setContractName(String value) { contractName = value; }
+    public LocalDateTime getDateTime() { return dateTime; }
+    public void setDateTime(LocalDateTime value) { dateTime = value; }
     public String getExpirationDate() { return expirationDate; }
     public void setExpirationDate(String value) { expirationDate = value; }
     public String getOptionType() { return optionType; }
@@ -128,9 +133,7 @@ public class YFOptionData {
     }
 
     public Float getDelta() { return delta; }
-
     public Float getGamma() { return gamma; }
-
     public Float getGex() { return gex; }
 
     private Float getBlackScholesValue(Float stockPrice, Float interestRate) {

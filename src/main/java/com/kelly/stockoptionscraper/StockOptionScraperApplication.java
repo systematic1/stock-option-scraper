@@ -1,6 +1,7 @@
 package com.kelly.stockoptionscraper;
 
 import com.kelly.stockoptionscraper.models.OptionGexData;
+import com.kelly.stockoptionscraper.models.StrikeOptionData;
 import com.kelly.stockoptionscraper.models.YFOptionData;
 import com.kelly.stockoptionscraper.services.OptionDataService;
 import com.kelly.stockoptionscraper.services.OptionGexDataService;
@@ -42,6 +43,7 @@ public class StockOptionScraperApplication {
     private static ArrayList<String> symbols;
     private ArrayList<YFOptionData> callOptionChain;
     private ArrayList<YFOptionData> putOptionChain;
+    private ArrayList<StrikeOptionData> strikeOptions;
     private Float stockPrice;
 
     @Value("${app.scraper.url}")
@@ -94,7 +96,7 @@ public class StockOptionScraperApplication {
         var endTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(16, 0));   // 4:00pm
 
         if (overrideTimeFrame || now.isEqual(startTime) || now.isEqual(endTime) || (now.isAfter(startTime) && now.isBefore(endTime))) {
-            System.out.println(String.format("** Process starting at %d:%2d", now.getHour(), now.getMinute()));
+            System.out.println(String.format("******* Process starting at %d:%02d", now.getHour(), now.getMinute()));
 
             try {
                 runProcess();
@@ -113,6 +115,7 @@ public class StockOptionScraperApplication {
             System.out.println(String.format("Requesting and analyzing symbol: %s ...", symbol));
 
             loadOptionData(symbol);
+            strikeOptions = new ArrayList<>();
 
             if (callOptionChain.isEmpty() || putOptionChain.isEmpty()) {
                 System.out.println("- No option chains were found for symbol. Skipping...");
@@ -127,7 +130,10 @@ public class StockOptionScraperApplication {
                 putOption.computeGreeks(stockPrice, interestRate);
             }
 
+            var expDate = callOptionChain.getFirst().getExpirationDate();
+
             // Write to the database
+            /*
             for (var callOption : callOptionChain) {
                 optionDataService.save(callOption);
             }
@@ -135,16 +141,34 @@ public class StockOptionScraperApplication {
             for (var putOption : putOptionChain) {
                 optionDataService.save(putOption);
             }
+            */
+
+            for (var callOption : callOptionChain) {
+                var strike = callOption.getStrikePrice();
+                var putOption = putOptionChain.stream()
+                        .filter(opt -> opt.getStrikePrice().equals(strike))
+                        .findFirst();
+
+                var strikeOption = new StrikeOptionData(symbol, expDate, strike, LocalDateTime.now(),
+                        callOption, putOption.orElse(new YFOptionData()));
+                strikeOptions.add(strikeOption);
+            }
+
+            /*
+            for (var strikeOption : strikeOptions) {
+                strikeOptionService.save(strikeOption);
+            }
+            */
 
             // Compute GEX overall data
-            var gex = new OptionGexData(symbol, callOptionChain, putOptionChain);
+            var gex = new OptionGexData(symbol, LocalDateTime.now(), strikeOptions);
 
             // Write to the database
-            optionGexDataService.save(gex);
+            //---optionGexDataService.save(gex);
 
             Float midPrice;
             var headerText = "Strike, Expiration, Ask, Bid, Mid || Last Trade, Last Price, Change, % Change || Volume, Open Int, IV % || Delta, Gamma, Gex";
-            var dataFormat = "%.2f, %s, %.2f, %.2f, %.2f || %s, %.2f, %.2f, %.3f || %d, %d, %.2f || %.4f, %.4f, %.0f";
+            var dataFormat = "%f, %s, %.2f, %.2f, %.2f || %s, %.2f, %.2f, %.3f || %d, %d, %.2f || %.4f, %.4f, %.0f";
             // format string: "%-20s" = left-align string with 20 character reserved
             //              "%20s" = right-align string with 20 chars reserved
             //              "%10d" = right-align integer with 15 chars reserved

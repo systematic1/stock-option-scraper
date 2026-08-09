@@ -3,6 +3,7 @@ package com.kelly.stockoptionscraper.services;
 import com.kelly.stockoptionscraper.models.YFOptionData;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Objects;
 
 import org.jsoup.*;
@@ -37,9 +38,6 @@ public class YFOptionChainParser {
     }
 
     public Elements extractOptionChainRows(Document document) {
-        var e1 = document.select("#main-content-wrapper");
-        var e1_1 = e1.select(".tableContainer");
-
         return document.select("#main-content-wrapper .tableContainer table tbody tr");
     }
 
@@ -85,7 +83,7 @@ public class YFOptionChainParser {
         var percentChange = convertToFloat(tdElements.get(IDX_PERC_CHANGE).text().replace("%", ""));
         var volume = convertToInteger(tdElements.get(IDX_VOLUME).text());
         var openInterest = convertToInteger(tdElements.get(IDX_OPEN_INTEREST).text());
-        var impliedVolatilityPerc = convertToFloat(tdElements.get(IDX_IV_PERC).text().replace("%", ""));
+        var impliedVolPerc = convertToFloat(tdElements.get(IDX_IV_PERC).text().replace("%", ""));
 
         var conLength = contractName.length();
         var contractLast15 = (conLength > 15) ? contractName.substring(conLength - 15) : contractName;
@@ -96,9 +94,9 @@ public class YFOptionChainParser {
                 contractLast15.substring(4, 6));
         var optionType = contractLast15.substring(6, 7);
 
-        return new YFOptionData(contractName, expirationDate, optionType, lastTrade,
-                strike, lastPrice, bidPrice, askPrice, change, percentChange, volume,
-                openInterest, impliedVolatilityPerc);
+        return new YFOptionData(LocalDateTime.now(), contractName, expirationDate, optionType,
+                lastTrade, strike, lastPrice, bidPrice, askPrice, change, percentChange, volume,
+                openInterest, impliedVolPerc);
     }
 
     private String getChildAnchorText(Element element) {
