@@ -32,7 +32,7 @@ public class StrikeOptionData {
         this.callOption = callOption;
         this.putOption = putOption;
 
-        this.netGex = callOption.getGex() - putOption.getGex();
+        this.netGex = callOption.getGex() + putOption.getGex();
         this.absoluteGex = Math.abs(callOption.getGex()) + Math.abs(putOption.getGex());
     }
 

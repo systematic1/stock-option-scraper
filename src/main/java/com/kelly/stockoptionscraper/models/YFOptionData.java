@@ -3,6 +3,7 @@ package com.kelly.stockoptionscraper.models;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
 import jakarta.persistence.*;
 import org.apache.commons.statistics.distribution.*;
@@ -96,6 +97,10 @@ public class YFOptionData {
         return getOptionType().equals("P");
     }
 
+    public Float getDelta() { return Objects.requireNonNullElse(delta, 0f); }
+    public Float getGamma() { return Objects.requireNonNullElse(gamma, 0f); }
+    public Float getGex() { return Objects.requireNonNullElse(gex, 0f); }
+
     public String getOptionTypeName() {
         if (isCall())
             return "CALL";
@@ -109,11 +114,9 @@ public class YFOptionData {
         var d1 = getBlackScholesValue(stockPrice, interestRate);
         var normalDist = NormalDistribution.of(0.0, 1.0);
 
-        //delta = isCall() ? normalCDFFn(d1) : normalCDFFn(d1) - 1f;
         delta = (float) (isCall() ? normalDist.cumulativeProbability(d1) : normalDist.cumulativeProbability(d1) - 1.0);
 
-        var iv = impliedVolatilityPercent / 100;
-        //gamma = (float) (normalPDFFn(d1) / (stockPrice * iv * Math.sqrt(timeToExpirationYears)));
+        var iv = (impliedVolatilityPercent + 0.001) / 100;
         gamma = (float)(normalDist.density(d1) / (stockPrice * iv * Math.sqrt(timeToExpirationYears)));
 
         var openInterest = (float) getOpenInterest();
@@ -132,25 +135,10 @@ public class YFOptionData {
         return (float)(days / 365.25f) + 0.001f;
     }
 
-    public Float getDelta() { return delta; }
-    public Float getGamma() { return gamma; }
-    public Float getGex() { return gex; }
-
     private Float getBlackScholesValue(Float stockPrice, Float interestRate) {
-        var iv = impliedVolatilityPercent / 100;
+        var iv = (impliedVolatilityPercent + 0.001) / 100;
         var numer = Math.log(stockPrice / strikePrice) + ((interestRate + ((iv * iv) / 2)) * timeToExpirationYears);
         var denom = iv * Math.sqrt(timeToExpirationYears);
         return (float) (numer / denom);
-    }
-
-    // Import org.apache.commons.math3.distribution.NormalDistribution  (commons-math3-3.x.x.jar)
-    private Float normalCDFFn(Float x) {
-        var t = 1.0 / (1.0 + 0.3275911 * Math.abs(x));
-        var y = 1.0 - (((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t * Math.exp(-x * x)));
-        return (float) ((x < 0) ? 0.5 * (1.0 - y) : 0.5 * (1.0 + y));
-    }
-
-    private Float normalPDFFn(Float x) {
-        return (float) ((1.0 / Math.sqrt(2.0 * Math.PI)) * Math.exp(-0.5 * x * x));
     }
 }

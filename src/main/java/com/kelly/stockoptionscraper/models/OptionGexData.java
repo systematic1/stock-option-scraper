@@ -41,7 +41,7 @@ public class OptionGexData {
         return getNetTotalGex() >= 0f;
     }
     public boolean isCallWallHigherGex() {
-        return callWallGex > putWallGex;
+        return Math.abs(callWallGex) > Math.abs(putWallGex);
     }
     public Float getCallWallStrike() { return callWallStrike; }
     public Float getPutWallStrike() { return putWallStrike; }
@@ -50,8 +50,7 @@ public class OptionGexData {
     public Float getNetCallGex() { return netCallGex; }
     public Float getNetPutGex() { return netPutGex; }
     public Float getAbsoluteGex() { return absoluteGex; }
-    public Float getNetTotalGex() { return netCallGex - netPutGex; }
-    public Float getAggregateTotalGex() { return netCallGex + netPutGex; }
+    public Float getNetTotalGex() { return netCallGex + netPutGex; }
 
     private void computeGexData() {
         callWallGex = 0f;
@@ -76,7 +75,7 @@ public class OptionGexData {
                 callWallStrike = optionData.getStrikePrice();
             }
 
-            if (putGex > putWallGex) {
+            if (putGex < putWallGex) {
                 putWallGex = putGex;
                 putWallStrike = optionData.getStrikePrice();
             }
