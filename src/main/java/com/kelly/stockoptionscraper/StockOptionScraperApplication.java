@@ -5,7 +5,7 @@ import com.kelly.stockoptionscraper.models.StrikeOptionData;
 import com.kelly.stockoptionscraper.models.YFOptionData;
 //import com.kelly.stockoptionscraper.services.OptionDataService;
 //import com.kelly.stockoptionscraper.services.OptionGexDataService;
-import com.kelly.stockoptionscraper.services.SLFEFFRParser;
+import com.kelly.stockoptionscraper.services.FedResEFFRParser;
 import com.kelly.stockoptionscraper.services.YFOptionChainParser;
 
 import java.io.IOException;
@@ -14,6 +14,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
+import java.sql.Array;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -39,7 +40,7 @@ public class StockOptionScraperApplication {
 
     private static StockOptionScraperApplication appInstance;
     private final YFOptionChainParser optionDataParser;
-    private final SLFEFFRParser rateDataParser;
+    private final FedResEFFRParser rateDataParser;
     private static ArrayList<String> symbols;
     private ArrayList<YFOptionData> callOptionChain;
     private ArrayList<YFOptionData> putOptionChain;
@@ -47,7 +48,6 @@ public class StockOptionScraperApplication {
     private Float stockPrice;
 
     // @Value("${application.properties-variable-name}") only works on instance variables
-    //@Value("${app.bc-option-scraper.url}")
     @Value("${app.yf-option-scraper.url}")
     public String optionScraperUrl;
 
@@ -77,7 +77,7 @@ public class StockOptionScraperApplication {
 
     public StockOptionScraperApplication(/*OptionDataService optionDataSvc, OptionGexDataService gexDataSvc*/) {
         optionDataParser = new YFOptionChainParser();
-        rateDataParser = new SLFEFFRParser();
+        rateDataParser = new FedResEFFRParser();
 
         //optionDataService = optionDataSvc;
         //optionGexDataService = gexDataSvc;
@@ -134,6 +134,9 @@ public class StockOptionScraperApplication {
             loadOptionData(symbol);
             strikeOptions = new ArrayList<>();
 
+            if (canOutputVerboseLog)
+                System.out.println(String.format("Current spot price: %10.2f", stockPrice));
+
             if (callOptionChain.isEmpty() || putOptionChain.isEmpty()) {
                 System.out.println("- No option chains were found for symbol. Skipping...");
                 continue;
@@ -185,8 +188,10 @@ public class StockOptionScraperApplication {
 
             if (canOutputVerboseLog) {
                 Float midPrice;
-                var headerText = "Strike, Expiration, Ask, Bid, Mid || Last Trade, Last Price, Change, % Change || Volume, Open Int, IV % || Delta, Gamma, Gex";
-                var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %18s, %8.2f, %8.2f, %8.3f || %6d, %5d, %7.2f || %6.4f, %6.4f, %14.4f";
+                //var headerText = "Strike, Expiration, Ask, Bid, Mid || Last Trade, Last Price, Change, % Change || Volume, Open Int, IV % || Delta, Gamma, Gex";
+                //var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %18s, %8.2f, %8.2f, %8.3f || %6d, %5d, %7.2f || %6.4f, %6.4f, %14.4f";
+                var headerText = "Strike, Expiration, Ask, Bid, Mid || Volume, Open Int, IV % || Delta, Gamma, Gex";
+                var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %6d, %5d, %7.2f || %6.4f, %6.4f, %14.4f";
                 // format string: "%-20s" = left-align string with 20 character reserved
                 //              "%20s" = right-align string with 20 chars reserved
                 //              "%10d" = right-align integer with 15 chars reserved
@@ -201,12 +206,15 @@ public class StockOptionScraperApplication {
 
                 for (var opt : callOptionChain) {
                     midPrice = (opt.getAskPrice() + opt.getBidPrice()) / 2f;
-                    System.out.println(String.format(dataFormat,
+                    /*System.out.println(String.format(dataFormat,
                             opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
                             opt.getLastTradeDate(), opt.getLastPrice(), opt.getChange(), opt.getPercentChange(),
                             opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
-                            opt.getDelta(), opt.getGamma(), opt.getGex()));
-                }
+                            opt.getDelta(), opt.getGamma(), opt.getGex()));*/
+                    System.out.println(String.format(dataFormat,
+                            opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
+                            opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
+                            opt.getDelta(), opt.getGamma(), opt.getGex()));                }
 
                 System.out.println();
                 System.out.println("================== PUTS ====================");
@@ -219,7 +227,6 @@ public class StockOptionScraperApplication {
                     midPrice = (opt.getAskPrice() + opt.getBidPrice()) / 2f;
                     System.out.println(String.format(dataFormat,
                             opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
-                            opt.getLastTradeDate(), opt.getLastPrice(), opt.getChange(), opt.getPercentChange(),
                             opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
                             opt.getDelta(), opt.getGamma(), opt.getGex()));
                 }
@@ -303,14 +310,46 @@ public class StockOptionScraperApplication {
 
         System.out.println(String.format("- Parsed stock price: %f", stockPrice));
 
+        Float atmStrike = 0f;
+
+        var tempCallOptions = new ArrayList<YFOptionData>();
+        var tempPutOptions = new ArrayList<YFOptionData>();
+
         for (Element row : parsedOptionRows) {
             var optionChainData = optionDataParser.parseOptionRowData(row);
 
             if (optionChainData.isCall())
-                callOptionChain.add(optionChainData);
+                tempCallOptions.add(optionChainData);
             else if (optionChainData.isPut())
-                putOptionChain.add(optionChainData);
+                tempPutOptions.add(optionChainData);
+
+            if (atmStrike == 0f && optionChainData.getStrikePrice() >= stockPrice)
+                atmStrike = optionChainData.getStrikePrice();
         }
+
+        //  Narrow list of Calls and Puts to within 25 strikes above and below stock price
+        final Float atmStrikeFinal = atmStrike;
+        var atmCallOption = tempCallOptions
+                .stream()
+                .filter(option -> option.getStrikePrice().equals(atmStrikeFinal))
+                .findFirst();
+        var atmPutOption = tempPutOptions
+                .stream()
+                .filter(option -> option.getStrikePrice().equals(atmStrikeFinal))
+                .findFirst();
+        var callOptIndex = tempCallOptions.indexOf(atmCallOption.orElseThrow());
+        var putOptIndex = tempPutOptions.indexOf(atmPutOption.orElseThrow());
+
+        for (var index = Math.max(0, callOptIndex - 25); index < Math.min(tempCallOptions.size(), callOptIndex + 25); index++) {
+            callOptionChain.add(tempCallOptions.get(index));
+        }
+
+        for (var index = Math.max(0, putOptIndex - 25); index < Math.min(tempPutOptions.size(), putOptIndex + 25); index++) {
+            putOptionChain.add(tempPutOptions.get(index));
+        }
+
+        tempCallOptions.clear();
+        tempPutOptions.clear();
 
         System.out.println(String.format("- Parsed %d call options and %d put options", callOptionChain.size(), putOptionChain.size()));
     }

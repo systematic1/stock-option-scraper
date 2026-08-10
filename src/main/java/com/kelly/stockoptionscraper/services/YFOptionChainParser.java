@@ -74,13 +74,13 @@ public class YFOptionChainParser {
         var tdElements = trElement.select("td");
 
         var contractName = getChildAnchorText(tdElements.get(IDX_CONTRACT));
-        var lastTrade = tdElements.get(IDX_LAST_TRADE).text();
+        //var lastTrade = tdElements.get(IDX_LAST_TRADE).text();
         var strike = convertToFloat(tdElements.get(IDX_STRIKE).text());
-        var lastPrice = convertToFloat(tdElements.get(IDX_LAST_PRICE).text());
+        //var lastPrice = convertToFloat(tdElements.get(IDX_LAST_PRICE).text());
         var bidPrice = convertToFloat(tdElements.get(IDX_BID).text());
         var askPrice = convertToFloat(tdElements.get(IDX_ASK).text());
-        var change = convertToFloat(tdElements.get(IDX_CHANGE).text());
-        var percentChange = convertToFloat(tdElements.get(IDX_PERC_CHANGE).text().replace("%", ""));
+        //var change = convertToFloat(tdElements.get(IDX_CHANGE).text());
+        //var percentChange = convertToFloat(tdElements.get(IDX_PERC_CHANGE).text().replace("%", ""));
         var volume = convertToInteger(tdElements.get(IDX_VOLUME).text());
         var openInterest = convertToInteger(tdElements.get(IDX_OPEN_INTEREST).text());
         var impliedVolPerc = convertToFloat(tdElements.get(IDX_IV_PERC).text().replace("%", ""));
@@ -94,9 +94,11 @@ public class YFOptionChainParser {
                 contractLast15.substring(4, 6));
         var optionType = contractLast15.substring(6, 7);
 
-        return new YFOptionData(LocalDateTime.now(), contractName, expirationDate, optionType,
+        /*return new YFOptionData(LocalDateTime.now(), contractName, expirationDate, optionType,
                 lastTrade, strike, lastPrice, bidPrice, askPrice, change, percentChange, volume,
-                openInterest, impliedVolPerc);
+                openInterest, impliedVolPerc);*/
+        return new YFOptionData(LocalDateTime.now(), contractName, expirationDate, optionType,
+                strike, bidPrice, askPrice, volume, openInterest, impliedVolPerc);
     }
 
     private String getChildAnchorText(Element element) {
