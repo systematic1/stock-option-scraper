@@ -3,8 +3,8 @@ package com.kelly.stockoptionscraper;
 import com.kelly.stockoptionscraper.models.OptionGexData;
 import com.kelly.stockoptionscraper.models.StrikeOptionData;
 import com.kelly.stockoptionscraper.models.YFOptionData;
-import com.kelly.stockoptionscraper.services.OptionDataService;
-import com.kelly.stockoptionscraper.services.OptionGexDataService;
+//import com.kelly.stockoptionscraper.services.OptionDataService;
+//import com.kelly.stockoptionscraper.services.OptionGexDataService;
 import com.kelly.stockoptionscraper.services.YFOptionChainParser;
 
 import java.io.IOException;
@@ -22,72 +22,77 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.concurrent.*;
 
+import jakarta.annotation.PostConstruct;
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.HttpServerErrorException;
 
-/**************
- *   Remove "(exclude = {..})" from @SprintBootApplication to enable database access
- **************/
 @SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
+//@EnableJpaRepositories(basePackages = "com.kelly.stockoptionscraper.services")
 public class StockOptionScraperApplication {
+
+    //private OptionDataService optionDataService;
+    //private OptionGexDataService optionGexDataService;
 
     private static StockOptionScraperApplication appInstance;
     private final YFOptionChainParser optionDataParser;
-    private final OptionDataService optionDataService;
-    private final OptionGexDataService optionGexDataService;
     private static ArrayList<String> symbols;
     private ArrayList<YFOptionData> callOptionChain;
     private ArrayList<YFOptionData> putOptionChain;
     private ArrayList<StrikeOptionData> strikeOptions;
     private Float stockPrice;
 
+    // @Value("${application.properties-variable-name}") only works on instance variables
     @Value("${app.scraper.url}")
-    public static String sourceUrl;
+    public String sourceUrl;
 
     @Value("${app.override-time-frame}")
-    public static boolean overrideTimeFrame;    // true allows running at any time
+    public boolean overrideTimeFrame;    // true allows running at any time
 
     @Value("${app.symbol.default}")
-    public static String defaultSymbol;
+    public String defaultSymbol;
 
     @Value("${app.run-interval.minutes}")
-    public static long runIntervalPeriod;
+    public long runIntervalPeriod;
 
-    public static Float interestRate = 1f;   // at 0 DTE, the e^(-rT) approaches one so just use constant here
+    public Float interestRate = 1f;   // at 0 DTE, the e^(-rT) approaches one so just use constant here
 
     static void main(String[] args) {
         symbols = new ArrayList<>();
         Collections.addAll(symbols, args);
 
+        SpringApplication.run(StockOptionScraperApplication.class, args);
+    }
+
+    public StockOptionScraperApplication(/*OptionDataService optionDataSvc, OptionGexDataService gexDataSvc*/) {
+        optionDataParser = new YFOptionChainParser();
+
+        //optionDataService = optionDataSvc;
+        //optionGexDataService = gexDataSvc;
+
+        callOptionChain = new ArrayList<>();
+        putOptionChain = new ArrayList<>();
+    }
+
+    @PostConstruct
+    public void init() {
         if (symbols.isEmpty())
             symbols.add(defaultSymbol);
 
-        var context = SpringApplication.run(StockOptionScraperApplication.class, args);
-        appInstance = context.getBean(StockOptionScraperApplication.class);
-
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-        Runnable task = () -> appInstance.checkTimeAndRun();
+        Runnable task = this::checkTimeAndRun;
 
         long initialDelay = 0;
         scheduler.scheduleAtFixedRate(task, initialDelay, runIntervalPeriod, TimeUnit.MINUTES);
 
         System.out.println(String.format("Scheduler set for %d minute intervals", runIntervalPeriod));
         System.out.println();
-    }
-
-    public StockOptionScraperApplication(OptionDataService optionSvc, OptionGexDataService optionGexSvc) {
-        optionDataParser = new YFOptionChainParser();
-        optionDataService = optionSvc;
-        optionGexDataService = optionGexSvc;
-
-        callOptionChain = new ArrayList<>();
-        putOptionChain = new ArrayList<>();
     }
 
     public void checkTimeAndRun() {
@@ -102,8 +107,7 @@ public class StockOptionScraperApplication {
                 runProcess();
             }
             catch (Exception ex) {
-                System.err.println("!! EXCEPTION:");
-                System.err.println(String.format("Message: %s -> %s", ex.getClass().getName(), ex.getMessage()));
+                ex.printStackTrace();
             }
         }
     }
@@ -168,7 +172,7 @@ public class StockOptionScraperApplication {
 
             Float midPrice;
             var headerText = "Strike, Expiration, Ask, Bid, Mid || Last Trade, Last Price, Change, % Change || Volume, Open Int, IV % || Delta, Gamma, Gex";
-            var dataFormat = "%f, %s, %.2f, %.2f, %.2f || %s, %.2f, %.2f, %.3f || %d, %d, %.2f || %.4f, %.4f, %.0f";
+            var dataFormat = "%5f, %10s, %8.2f, %8.2f, %8.2f || %10s, %8.2f, %8.2f, %6.3f || %6d, %5d, %7.2f || %6.4f, %6.4f, %10.0f";
             // format string: "%-20s" = left-align string with 20 character reserved
             //              "%20s" = right-align string with 20 chars reserved
             //              "%10d" = right-align integer with 15 chars reserved
@@ -208,21 +212,29 @@ public class StockOptionScraperApplication {
             System.out.println("================= GEX DATA =================");
             System.out.println();
 
-            System.out.println(String.format("Call Wall:  Strike = %f, GEX Value = %f",
-                    gex.getCallWallStrike(), gex.getCallWallGex()));
-            System.out.println(String.format("Put Wall:   Strike = %f, GEX Value = %f",
-                    gex.getPutWallStrike(), gex.getPutWallGex()));
-            System.out.println(String.format("Net Call Gex Value = %f", gex.getNetCallGex()));
-            System.out.println(String.format("Net Put  Gex Value = %f", gex.getNetPutGex()));
+            System.out.println("Strike, Net Gex, Absolute Gex");
+            System.out.println();
+            for (var data : strikeOptions) {
+                System.out.println(String.format("%5f, %10.2f, %10.2f",
+                        data.getStrikePrice(), data.getNetGex(), data.getAbsoluteGex()));
+            }
 
-            System.out.println(String.format("Net TOTAL Gex Value = %f", gex.getNetTotalGex()));
-            System.out.println(String.format("Aggregate Gex Value = %f", gex.getAggregateTotalGex()));
+            System.out.println();
+            System.out.println(String.format("Call Wall:  Strike = %5f, GEX Value = %10.2f",
+                    gex.getCallWallStrike(), gex.getCallWallGex()));
+            System.out.println(String.format("Put Wall:   Strike = %5f, GEX Value = %10.2f",
+                    gex.getPutWallStrike(), gex.getPutWallGex()));
+            System.out.println(String.format("Net Call Gex Value = %12.3f", gex.getNetCallGex()));
+            System.out.println(String.format("Net Put  Gex Value = %12.3f", gex.getNetPutGex()));
+
+            System.out.println(String.format("Net TOTAL Gex Value = %13.3f", gex.getNetTotalGex()));
+            System.out.println(String.format("Aggregate Gex Value = %13.3f", gex.getAggregateTotalGex()));
 
             System.out.println(gex.isPositive() ? "Positive (+) GEX" : "Negative (-) GEX");
             System.out.println(gex.isCallWallHigherGex() ? "Call wall is higher" : "Put wall is higher");
 
             System.out.println();
-            System.out.println("**********************************************************");
+            System.out.println("***************************************************************************");
             System.out.println();
         }
     }
