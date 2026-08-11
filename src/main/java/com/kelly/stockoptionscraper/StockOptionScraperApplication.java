@@ -21,8 +21,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.*;
 import java.util.zip.GZIPInputStream;
-
 import jakarta.annotation.PostConstruct;
+
 import org.jsoup.nodes.Element;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -86,6 +86,7 @@ public class StockOptionScraperApplication {
         putOptionChain = new ArrayList<>();
     }
 
+    // This is needed in order access bound @Value variables after construction
     @PostConstruct
     public void init() {
         if (symbols.isEmpty())
@@ -108,7 +109,7 @@ public class StockOptionScraperApplication {
         var endTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(16, 0));   // 4:00pm
 
         if (overrideTimeFrame || now.isEqual(startTime) || now.isEqual(endTime) || (now.isAfter(startTime) && now.isBefore(endTime))) {
-            System.out.println(String.format("********* Process starting at %d:%02d *********", now.getHour(), now.getMinute()));
+            System.out.println(String.format("******************** Process starting at %d:%02d *****************", now.getHour(), now.getMinute()));
             System.out.println();
 
             try {
@@ -142,25 +143,21 @@ public class StockOptionScraperApplication {
                 continue;
             }
 
-            for (var callOption : callOptionChain) {
+            for (var callOption : callOptionChain)
                 callOption.computeGreeks(stockPrice, interestRate);
-            }
 
-            for (var putOption : putOptionChain) {
+            for (var putOption : putOptionChain)
                 putOption.computeGreeks(stockPrice, interestRate);
-            }
 
             var expDate = callOptionChain.getFirst().getExpirationDate();
 
-            // Write to the database
+            // Write Option Chain to the database
             /*
-            for (var callOption : callOptionChain) {
+            for (var callOption : callOptionChain)
                 optionDataService.save(callOption);
-            }
 
-            for (var putOption : putOptionChain) {
+            for (var putOption : putOptionChain)
                 optionDataService.save(putOption);
-            }
             */
 
             for (var callOption : callOptionChain) {
@@ -174,31 +171,29 @@ public class StockOptionScraperApplication {
                 strikeOptions.add(strikeOption);
             }
 
+            // Write Strike-Option data to the database
             /*
-            for (var strikeOption : strikeOptions) {
+            for (var strikeOption : strikeOptions)
                 strikeOptionService.save(strikeOption);
-            }
             */
 
             // Compute GEX overall data
             var gex = new OptionGexData(symbol, LocalDateTime.now(), strikeOptions);
 
-            // Write to the database
-            //---optionGexDataService.save(gex);
+            // Write GEX data to the database
+            //optionGexDataService.save(gex);
 
             if (canOutputVerboseLog) {
                 Float midPrice;
-                //var headerText = "Strike, Expiration, Ask, Bid, Mid || Last Trade, Last Price, Change, % Change || Volume, Open Int, IV % || Delta, Gamma, Gex";
-                //var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %18s, %8.2f, %8.2f, %8.3f || %6d, %5d, %7.2f || %6.4f, %6.4f, %14.4f";
-                var headerText = "Strike, Expiration, Ask, Bid, Mid || Volume, Open Int, IV % || Delta, Gamma, Gex";
-                var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %6d, %5d, %7.2f || %6.4f, %6.4f, %14.4f";
+                var headerText = "Strike,  Expiration,     Ask,      Bid,      Mid  || Volume,  Open Int, IV %   || Delta,   Gamma,          Gex";
+                var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %7d, %7d, %7.2f || %6.4f, %6.4f, %14.4f";
                 // format string: "%-20s" = left-align string with 20 character reserved
                 //              "%20s" = right-align string with 20 chars reserved
                 //              "%10d" = right-align integer with 15 chars reserved
                 //              "%12.2f" = right-align float with 12 chars reserved and 2 decimal places
 
                 System.out.println();
-                System.out.println("================== CALLS ===================");
+                System.out.println("====================== CALLS =======================");
                 System.out.println();
 
                 System.out.println(headerText);
@@ -206,18 +201,14 @@ public class StockOptionScraperApplication {
 
                 for (var opt : callOptionChain) {
                     midPrice = (opt.getAskPrice() + opt.getBidPrice()) / 2f;
-                    /*System.out.println(String.format(dataFormat,
-                            opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
-                            opt.getLastTradeDate(), opt.getLastPrice(), opt.getChange(), opt.getPercentChange(),
-                            opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
-                            opt.getDelta(), opt.getGamma(), opt.getGex()));*/
                     System.out.println(String.format(dataFormat,
                             opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
                             opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
-                            opt.getDelta(), opt.getGamma(), opt.getGex()));                }
+                            opt.getDelta(), opt.getGamma(), opt.getGex()));
+                }
 
                 System.out.println();
-                System.out.println("================== PUTS ====================");
+                System.out.println("====================== PUTS ========================");
                 System.out.println();
 
                 System.out.println(headerText);
@@ -232,11 +223,12 @@ public class StockOptionScraperApplication {
                 }
 
                 System.out.println();
-                System.out.println("================= GEX DATA =================");
+                System.out.println("===================== GEX DATA =====================");
                 System.out.println();
 
                 System.out.println("Strike, Net Gex, Absolute Gex");
                 System.out.println();
+
                 for (var data : strikeOptions) {
                     System.out.println(String.format("%7.1f, %12.2f, %12.2f",
                             data.getStrikePrice(), data.getNetGex(), data.getAbsoluteGex()));
@@ -340,13 +332,11 @@ public class StockOptionScraperApplication {
         var callOptIndex = tempCallOptions.indexOf(atmCallOption.orElseThrow());
         var putOptIndex = tempPutOptions.indexOf(atmPutOption.orElseThrow());
 
-        for (var index = Math.max(0, callOptIndex - 25); index < Math.min(tempCallOptions.size(), callOptIndex + 25); index++) {
+        for (var index = Math.max(0, callOptIndex - 25); index < Math.min(tempCallOptions.size(), callOptIndex + 25); index++)
             callOptionChain.add(tempCallOptions.get(index));
-        }
 
-        for (var index = Math.max(0, putOptIndex - 25); index < Math.min(tempPutOptions.size(), putOptIndex + 25); index++) {
+        for (var index = Math.max(0, putOptIndex - 25); index < Math.min(tempPutOptions.size(), putOptIndex + 25); index++)
             putOptionChain.add(tempPutOptions.get(index));
-        }
 
         tempCallOptions.clear();
         tempPutOptions.clear();
@@ -356,9 +346,9 @@ public class StockOptionScraperApplication {
 
     private void loadRateData()
             throws IOException, InterruptedException {
-        System.out.println(String.format("Making http call to EFFR url: %s", rateScraperUrl));
+        System.out.println(String.format("- Making http call to EFFR url: %s", rateScraperUrl));
 
-        // Use HttpClient to call to Yahoo finance API
+        // Use HttpClient to call to Federal Reserve API
         var httpClient = HttpClient.newHttpClient();
         var request = HttpRequest.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
@@ -379,9 +369,8 @@ public class StockOptionScraperApplication {
                 var responseStream = response.body();
 
                 var contentEncoding = response.headers().firstValue("Content-Encoding").orElse("");
-                if ("gzip".equalsIgnoreCase(contentEncoding)) {
+                if ("gzip".equalsIgnoreCase(contentEncoding))
                     responseStream = new GZIPInputStream(responseStream);
-                }
 
                 stringResponse = new String(responseStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
             }
@@ -395,10 +384,10 @@ public class StockOptionScraperApplication {
 
             interestRate = rateDataParser.convertToFloat(intRate) / 100f;
 
-            System.out.println(String.format("Received rate value: %s", intRate));
+            System.out.println(String.format("--- Received rate value: %s", intRate));
         }
         catch (HttpTimeoutException htoex) {
-            System.err.println("Timed out requesting EFFR. Using default value for interest rate.");
+            System.err.println("* Timed out requesting EFFR. Using default value for interest rate.");
             interestRate = 0.0363f;
         }
     }

@@ -17,13 +17,9 @@ public class YFOptionData {
     private LocalDateTime dateTime;
     private String expirationDate;
     private String optionType;
-    //private String lastTradeDate;
     private Float strikePrice;
-    //private Float lastPrice;
     private Float bidPrice;
     private Float askPrice;
-    //private Float change;
-    //private Float percentChange;
     private Integer volume;
     private Integer openInterest;
     private Float impliedVolatilityPercent;
@@ -35,10 +31,6 @@ public class YFOptionData {
 
     public YFOptionData() { }
 
-    /*public YFOptionData(LocalDateTime dateTime, String contractName, String expirationDate,
-                        String optionType, String lastTradeDate, Float strikePrice, Float lastPrice,
-                        Float bidPrice, Float askPrice, Float change, Float percentChange,
-                        Integer volume, Integer openInterest, Float impliedVolatilityPercent) {*/
     public YFOptionData(LocalDateTime dateTime, String contractName, String expirationDate,
                        String optionType, Float strikePrice, Float bidPrice, Float askPrice,
                        Integer volume, Integer openInterest, Float impliedVolatilityPercent) {
@@ -46,13 +38,9 @@ public class YFOptionData {
         this.dateTime = dateTime;
         this.expirationDate = expirationDate;
         this.optionType = optionType;
-        //this.lastTradeDate = lastTradeDate;
         this.strikePrice = strikePrice;
-        //this.lastPrice = lastPrice;
         this.bidPrice = bidPrice;
         this.askPrice = askPrice;
-        //this.change = change;
-        //this.percentChange = percentChange;
         this.volume = volume;
         this.openInterest = openInterest;
         this.impliedVolatilityPercent = impliedVolatilityPercent;
@@ -67,21 +55,12 @@ public class YFOptionData {
     public void setExpirationDate(String value) { expirationDate = value; }
     public String getOptionType() { return optionType; }
     public void setOptionType(String value) { optionType = value; }
-    //public String getLastTradeDate() { return lastTradeDate; }
-    //public void setLastTradeDate(String value) { lastTradeDate = value; }
-
     public Float getStrikePrice() { return strikePrice; }
     public void setStrikePrice(Float value) { strikePrice = value; }
-    //public Float getLastPrice() { return lastPrice; }
-    //public void setLastPrice(Float value) { lastPrice = value; }
     public Float getBidPrice() { return bidPrice; }
     public void setBidPrice(Float value) { bidPrice = value; }
     public Float getAskPrice() { return askPrice; }
     public void setAskPrice(Float value) { askPrice = value; }
-    //public Float getChange() { return change; }
-    //public void setChange(Float value) { change = value; }
-    //public Float getPercentChange() { return percentChange; }
-    //public void setPercentChange(Float value) { percentChange = value; }
 
     public Integer getVolume() { return volume; }
     public void setVolume(Integer value) { volume = value; }
@@ -134,7 +113,7 @@ public class YFOptionData {
         if (currentDate.isAfter(expireDate))
             days *= -1;
 
-        return (float)(days / 365.25f) + 0.001f;
+        return ((float)days / 365.25f) + 0.001f;
     }
 
     private Float getBlackScholesValue(Float stockPrice, Float interestRate) {
