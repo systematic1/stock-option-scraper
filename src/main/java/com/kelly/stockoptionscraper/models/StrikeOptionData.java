@@ -9,13 +9,18 @@ import java.time.LocalDateTime;
 public class StrikeOptionData {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long strikeOptionId;
 
-    private final Float strikePrice;
+    private Float strikePrice;
     private Float netGex;
     private Float absoluteGex;
+
+    @Column(length = 5)
     private String symbol;
+
+    @Column(length = 10)
     private String expirationDate;
+
     private LocalDateTime dateTime;
 
     @Transient
@@ -23,8 +28,11 @@ public class StrikeOptionData {
     @Transient
     private YFOptionData putOption;
 
+    public StrikeOptionData() { }
+
     public StrikeOptionData(String symbol, String expirationDate, Float strikePrice,
                             LocalDateTime dateTime, YFOptionData callOption, YFOptionData putOption) {
+        this.strikeOptionId = 0L;
         this.strikePrice = strikePrice;
         this.symbol = symbol;
         this.expirationDate = expirationDate;
@@ -38,6 +46,7 @@ public class StrikeOptionData {
 
     public YFOptionData getCallOption() { return callOption; }
     public YFOptionData getPutOption() { return putOption; }
+    public Long getStrikeOptionId() { return strikeOptionId; }
     public Float getStrikePrice() { return strikePrice; }
 
     public Float getNetGex() { return netGex; }

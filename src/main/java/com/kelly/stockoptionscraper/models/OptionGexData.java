@@ -11,10 +11,14 @@ public class OptionGexData {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Integer gexId;
 
     private LocalDateTime dateTime;
+
+    @Column(length = 5)
     private String symbol;
+
+    @Transient
     private List<StrikeOptionData> strikeOptions;
 
     private Float callWallStrike;
@@ -25,6 +29,8 @@ public class OptionGexData {
     private Float netPutGex;
     private Float absoluteGex;
 
+    public OptionGexData() { }
+
     public OptionGexData(String symbol, LocalDateTime dateTime, List<StrikeOptionData> strikeOptions) {
         this.symbol = symbol;
         this.dateTime = dateTime;
@@ -33,7 +39,7 @@ public class OptionGexData {
         computeGexData();
     }
 
-    public Integer getId() { return id; }
+    public Integer getGexId() { return gexId; }
     public String getSymbol() { return symbol; }
     public LocalDateTime getDateTime() { return dateTime; }
 

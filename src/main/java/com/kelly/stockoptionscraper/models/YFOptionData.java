@@ -13,9 +13,15 @@ import org.apache.commons.statistics.distribution.*;
 public class YFOptionData {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long optionId;
+
+    @Column(length = 15)
     private String contractName;
     private LocalDateTime dateTime;
+    @Column(length = 10)
     private String expirationDate;
+    @Column(length = 1)
     private String optionType;
     private Float strikePrice;
     private Float bidPrice;
@@ -28,12 +34,14 @@ public class YFOptionData {
     private Float gamma;
     private Float delta;
     private Float gex;
+    private Float dex;
 
     public YFOptionData() { }
 
     public YFOptionData(LocalDateTime dateTime, String contractName, String expirationDate,
                        String optionType, Float strikePrice, Float bidPrice, Float askPrice,
                        Integer volume, Integer openInterest, Float impliedVolatilityPercent) {
+        this.optionId = 0L;
         this.contractName = contractName;
         this.dateTime = dateTime;
         this.expirationDate = expirationDate;
@@ -47,6 +55,7 @@ public class YFOptionData {
         this.timeToExpirationYears = getTimeToExpireYears();
     }
 
+    public Long getOptionId() { return optionId; }
     public String getContractName() { return contractName; }
     public void setContractName(String value) { contractName = value; }
     public LocalDateTime getDateTime() { return dateTime; }
@@ -81,6 +90,7 @@ public class YFOptionData {
     public Float getDelta() { return Objects.requireNonNullElse(delta, 0f); }
     public Float getGamma() { return Objects.requireNonNullElse(gamma, 0f); }
     public Float getGex() { return Objects.requireNonNullElse(gex, 0f); }
+    public Float getDex() { return Objects.requireNonNullElse(dex, 0f); }
 
     public String getOptionTypeName() {
         if (isCall())
@@ -103,6 +113,8 @@ public class YFOptionData {
         var openInterest = (float) getOpenInterest();
         var gexValue = gamma * openInterest * stockPrice * stockPrice * 0.01f;
         gex = isCall() ? gexValue : -gexValue;
+
+        dex = delta * openInterest * 100f * (isCall() ? 1 : -1);
     }
 
     public Float getTimeToExpireYears() {
