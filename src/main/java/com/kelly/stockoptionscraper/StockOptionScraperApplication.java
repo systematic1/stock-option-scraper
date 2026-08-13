@@ -28,10 +28,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.repository.CrudRepository;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.HttpServerErrorException;
 
-@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class})
+@SpringBootApplication()
 @EnableJpaRepositories(basePackages = "com.kelly.stockoptionscraper.services")
 public class StockOptionScraperApplication {
 
@@ -131,6 +132,8 @@ public class StockOptionScraperApplication {
     private void runProcess()
             throws IOException, InterruptedException {
 
+        var dateTimeNow = LocalDateTime.now();
+
         loadRateData();
         System.out.println(String.format("Using Effective Federal Funds Rate (interest rate) of %6.4f", interestRate));
 
@@ -158,12 +161,8 @@ public class StockOptionScraperApplication {
 
             var expDate = callOptionChain.getFirst().getExpirationDate();
 
-            // Write Option Chain to the database
-            for (var callOption : callOptionChain)
-                optionDataService.save(callOption);
-
-            for (var putOption : putOptionChain)
-                optionDataService.save(putOption);
+            optionDataService.saveAll(callOptionChain);
+            optionDataService.saveAll(putOptionChain);
 
             // Create list of strikes with option data for the strike
             for (var callOption : callOptionChain) {
@@ -172,23 +171,18 @@ public class StockOptionScraperApplication {
                         .filter(opt -> opt.getStrikePrice().equals(strike))
                         .findFirst();
 
-                var strikeOption = new StrikeOptionData(symbol, expDate, strike, LocalDateTime.now(),
+                var strikeOption = new StrikeOptionData(symbol, expDate, strike, dateTimeNow,
                         callOption, putOption.orElse(new YFOptionData()));
                 strikeOptions.add(strikeOption);
             }
 
-            // Write Strike-Option data to the database
-            for (var strikeOption : strikeOptions)
-                strikeOptionService.save(strikeOption);
+            strikeOptionService.saveAll(strikeOptions);
 
             // Compute GEX overall data
-            var gex = new OptionGexData(symbol, LocalDateTime.now(), strikeOptions);
-
-            // Write GEX data to the database
+            var gex = new OptionGexData(symbol, dateTimeNow, strikeOptions);
             optionGexDataService.save(gex);
 
             if (canOutputVerboseLog) {
-                Float midPrice;
                 var headerText = "Strike,  Expiration,     Ask,      Bid,      Mid  || Volume,  Open Int, IV %   || Delta,   Gamma,          Gex,        Dex";
                 var dataFormat = "%7.1f, %10s, %8.2f, %8.2f, %8.2f || %7d, %7d, %7.2f || %6.4f, %6.4f, %14.4f, %11.2f";
                 // format string: "%-20s" = left-align string with 20 character reserved
@@ -204,10 +198,9 @@ public class StockOptionScraperApplication {
                 System.out.println();
 
                 for (var opt : callOptionChain) {
-                    midPrice = (opt.getAskPrice() + opt.getBidPrice()) / 2f;
                     System.out.println(String.format(dataFormat,
-                            opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
-                            opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
+                            opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(),
+                            opt.getMidPrice(), opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
                             opt.getDelta(), opt.getGamma(), opt.getGex(), opt.getDex()));
                 }
 
@@ -219,10 +212,9 @@ public class StockOptionScraperApplication {
                 System.out.println();
 
                 for (var opt : putOptionChain) {
-                    midPrice = (opt.getAskPrice() + opt.getBidPrice()) / 2f;
                     System.out.println(String.format(dataFormat,
-                            opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(), midPrice,
-                            opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
+                            opt.getStrikePrice(), opt.getExpirationDate(), opt.getAskPrice(), opt.getBidPrice(),
+                            opt.getMidPrice(), opt.getVolume(), opt.getOpenInterest(), opt.getImpliedVolatilityPercent(),
                             opt.getDelta(), opt.getGamma(), opt.getGex(), opt.getDex()));
                 }
 
@@ -266,6 +258,8 @@ public class StockOptionScraperApplication {
 
         callOptionChain.clear();
         putOptionChain.clear();
+
+        var dateTimeNow = LocalDateTime.now();
 
         Long unixEpoch = Instant.now().truncatedTo(ChronoUnit.DAYS).getEpochSecond();
         symbol = symbol.replace("^", "%5E");
@@ -312,7 +306,7 @@ public class StockOptionScraperApplication {
         var tempPutOptions = new ArrayList<YFOptionData>();
 
         for (Element row : parsedOptionRows) {
-            var optionChainData = optionDataParser.parseOptionRowData(row);
+            var optionChainData = optionDataParser.parseOptionRowData(row, dateTimeNow);
 
             if (optionChainData.isCall())
                 tempCallOptions.add(optionChainData);

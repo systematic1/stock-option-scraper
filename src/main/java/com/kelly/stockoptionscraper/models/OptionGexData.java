@@ -32,6 +32,7 @@ public class OptionGexData {
     public OptionGexData() { }
 
     public OptionGexData(String symbol, LocalDateTime dateTime, List<StrikeOptionData> strikeOptions) {
+        this.gexId = null;
         this.symbol = symbol;
         this.dateTime = dateTime;
         this.strikeOptions = strikeOptions;

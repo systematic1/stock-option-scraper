@@ -32,7 +32,7 @@ public class StrikeOptionData {
 
     public StrikeOptionData(String symbol, String expirationDate, Float strikePrice,
                             LocalDateTime dateTime, YFOptionData callOption, YFOptionData putOption) {
-        this.strikeOptionId = 0L;
+        this.strikeOptionId = null;
         this.strikePrice = strikePrice;
         this.symbol = symbol;
         this.expirationDate = expirationDate;

@@ -16,7 +16,7 @@ public class YFOptionData {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long optionId;
 
-    @Column(length = 15)
+    @Column(length = 20)
     private String contractName;
     private LocalDateTime dateTime;
     @Column(length = 10)
@@ -26,6 +26,7 @@ public class YFOptionData {
     private Float strikePrice;
     private Float bidPrice;
     private Float askPrice;
+    private Float midPrice;
     private Integer volume;
     private Integer openInterest;
     private Float impliedVolatilityPercent;
@@ -41,7 +42,7 @@ public class YFOptionData {
     public YFOptionData(LocalDateTime dateTime, String contractName, String expirationDate,
                        String optionType, Float strikePrice, Float bidPrice, Float askPrice,
                        Integer volume, Integer openInterest, Float impliedVolatilityPercent) {
-        this.optionId = 0L;
+        this.optionId = null;
         this.contractName = contractName;
         this.dateTime = dateTime;
         this.expirationDate = expirationDate;
@@ -53,6 +54,7 @@ public class YFOptionData {
         this.openInterest = openInterest;
         this.impliedVolatilityPercent = impliedVolatilityPercent;
         this.timeToExpirationYears = getTimeToExpireYears();
+        this.midPrice = (askPrice - bidPrice) / 2f;
     }
 
     public Long getOptionId() { return optionId; }
@@ -87,6 +89,7 @@ public class YFOptionData {
         return getOptionType().equals("P");
     }
 
+    public Float getMidPrice() { return midPrice; }
     public Float getDelta() { return Objects.requireNonNullElse(delta, 0f); }
     public Float getGamma() { return Objects.requireNonNullElse(gamma, 0f); }
     public Float getGex() { return Objects.requireNonNullElse(gex, 0f); }
