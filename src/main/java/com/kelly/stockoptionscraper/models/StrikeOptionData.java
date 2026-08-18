@@ -2,6 +2,7 @@ package com.kelly.stockoptionscraper.models;
 
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,9 +19,7 @@ public class StrikeOptionData {
     @Column(length = 5)
     private String symbol;
 
-    @Column(length = 10)
-    private String expirationDate;
-
+    private LocalDate expirationDate;
     private LocalDateTime dateTime;
 
     @Transient
@@ -30,7 +29,7 @@ public class StrikeOptionData {
 
     public StrikeOptionData() { }
 
-    public StrikeOptionData(String symbol, String expirationDate, Float strikePrice,
+    public StrikeOptionData(String symbol, LocalDate expirationDate, Float strikePrice,
                             LocalDateTime dateTime, YFOptionData callOption, YFOptionData putOption) {
         this.strikeOptionId = null;
         this.strikePrice = strikePrice;

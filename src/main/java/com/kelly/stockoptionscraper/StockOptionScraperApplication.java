@@ -113,8 +113,8 @@ public class StockOptionScraperApplication {
 
     public void checkTimeAndRun() {
         var now = LocalDateTime.now();
-        var startTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(9, 30)); // 9:30am
-        var endTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(16, 0));   // 4:00pm
+        var startTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(9, 46)); // 9:46am - account for using 15 min delayed data
+        var endTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(16, 18));   // 4:18pm
 
         if (overrideTimeFrame || now.isEqual(startTime) || now.isEqual(endTime) || (now.isAfter(startTime) && now.isBefore(endTime))) {
             System.out.println(String.format("******************** Process starting at %d:%02d *****************", now.getHour(), now.getMinute()));

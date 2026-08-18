@@ -3,6 +3,7 @@ package com.kelly.stockoptionscraper.services;
 import com.kelly.stockoptionscraper.models.YFOptionData;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -88,11 +89,12 @@ public class YFOptionChainParser {
         var conLength = contractName.length();
         var contractLast15 = (conLength > 15) ? contractName.substring(conLength - 15) : contractName;
 
-        var expirationDate = String.format("20%s-%s-%s",
+        var expirationDateText = String.format("20%s-%s-%s",
                 contractLast15.substring(0, 2),
                 contractLast15.substring(2, 4),
                 contractLast15.substring(4, 6));
         var optionType = contractLast15.substring(6, 7);
+        var expirationDate = LocalDate.parse(expirationDateText);
 
         return new YFOptionData(dateTime, contractName, expirationDate, optionType,
                 strike, bidPrice, askPrice, volume, openInterest, impliedVolPerc);

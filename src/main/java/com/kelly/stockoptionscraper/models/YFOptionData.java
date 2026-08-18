@@ -20,7 +20,7 @@ public class YFOptionData {
     private String contractName;
     private LocalDateTime dateTime;
     @Column(length = 10)
-    private String expirationDate;
+    private LocalDate expirationDate;
     @Column(length = 1)
     private String optionType;
     private Float strikePrice;
@@ -39,7 +39,7 @@ public class YFOptionData {
 
     public YFOptionData() { }
 
-    public YFOptionData(LocalDateTime dateTime, String contractName, String expirationDate,
+    public YFOptionData(LocalDateTime dateTime, String contractName, LocalDate expirationDate,
                        String optionType, Float strikePrice, Float bidPrice, Float askPrice,
                        Integer volume, Integer openInterest, Float impliedVolatilityPercent) {
         this.optionId = null;
@@ -62,8 +62,8 @@ public class YFOptionData {
     public void setContractName(String value) { contractName = value; }
     public LocalDateTime getDateTime() { return dateTime; }
     public void setDateTime(LocalDateTime value) { dateTime = value; }
-    public String getExpirationDate() { return expirationDate; }
-    public void setExpirationDate(String value) { expirationDate = value; }
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate value) { expirationDate = value; }
     public String getOptionType() { return optionType; }
     public void setOptionType(String value) { optionType = value; }
     public Float getStrikePrice() { return strikePrice; }
@@ -122,10 +122,9 @@ public class YFOptionData {
 
     public Float getTimeToExpireYears() {
         var currentDate = LocalDate.now();
-        var expireDate = LocalDate.parse(expirationDate);
-        var days = ChronoUnit.DAYS.between(currentDate, expireDate);
+        var days = ChronoUnit.DAYS.between(currentDate, expirationDate);
 
-        if (currentDate.isAfter(expireDate))
+        if (currentDate.isAfter(expirationDate))
             days *= -1;
 
         return ((float)days / 365.25f) + 0.001f;
