@@ -71,7 +71,7 @@ public class YFOptionChainParser {
     //      #####   = 5-digit, zero-padded strike price
     //      000     = unknown, always 3 zeros
 
-    public YFOptionData parseOptionRowData(Element trElement, LocalDateTime dateTime) {
+    public YFOptionData parseOptionRowData(Element trElement, LocalDateTime dateTime, String symbol) {
         var tdElements = trElement.select("td");
 
         var contractName = getChildAnchorText(tdElements.get(IDX_CONTRACT));
@@ -96,7 +96,7 @@ public class YFOptionChainParser {
         var optionType = contractLast15.substring(6, 7);
         var expirationDate = LocalDate.parse(expirationDateText);
 
-        return new YFOptionData(dateTime, contractName, expirationDate, optionType,
+        return new YFOptionData(symbol, dateTime, contractName, expirationDate, optionType,
                 strike, bidPrice, askPrice, volume, openInterest, impliedVolPerc);
     }
 

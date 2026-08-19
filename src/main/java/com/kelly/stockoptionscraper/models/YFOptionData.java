@@ -16,6 +16,9 @@ public class YFOptionData {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long optionId;
 
+    @Column(length = 5)
+    private String symbol;
+
     @Column(length = 20)
     private String contractName;
     private LocalDateTime dateTime;
@@ -23,6 +26,7 @@ public class YFOptionData {
     private LocalDate expirationDate;
     @Column(length = 1)
     private String optionType;
+
     private Float strikePrice;
     private Float bidPrice;
     private Float askPrice;
@@ -39,10 +43,11 @@ public class YFOptionData {
 
     public YFOptionData() { }
 
-    public YFOptionData(LocalDateTime dateTime, String contractName, LocalDate expirationDate,
+    public YFOptionData(String symbol, LocalDateTime dateTime, String contractName, LocalDate expirationDate,
                        String optionType, Float strikePrice, Float bidPrice, Float askPrice,
                        Integer volume, Integer openInterest, Float impliedVolatilityPercent) {
         this.optionId = null;
+        this.symbol = symbol;
         this.contractName = contractName;
         this.dateTime = dateTime;
         this.expirationDate = expirationDate;

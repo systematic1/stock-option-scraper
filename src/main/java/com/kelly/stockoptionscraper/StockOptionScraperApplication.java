@@ -262,10 +262,10 @@ public class StockOptionScraperApplication {
         var dateTimeNow = LocalDateTime.now();
 
         Long unixEpoch = Instant.now().truncatedTo(ChronoUnit.DAYS).getEpochSecond();
-        symbol = symbol.replace("^", "%5E");
+        var symbolEscaped = symbol.replace("^", "%5E");
 
         var finalUrl = optionScraperUrl
-                .replace("{symbol}", symbol)
+                .replace("{symbol}", symbolEscaped)
                 .replace("{epoch}", unixEpoch.toString());
 
         System.out.println(String.format("Making http call to options url: %s", finalUrl));
@@ -306,7 +306,7 @@ public class StockOptionScraperApplication {
         var tempPutOptions = new ArrayList<YFOptionData>();
 
         for (Element row : parsedOptionRows) {
-            var optionChainData = optionDataParser.parseOptionRowData(row, dateTimeNow);
+            var optionChainData = optionDataParser.parseOptionRowData(row, dateTimeNow, symbol);
 
             if (optionChainData.isCall())
                 tempCallOptions.add(optionChainData);
